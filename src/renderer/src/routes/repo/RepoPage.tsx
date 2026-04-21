@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -29,6 +29,7 @@ type ExecStatus = 'idle' | 'confirming' | 'checking' | 'executing' | 'done';
 export function RepoPage(): JSX.Element {
   const params = useParams<{ name: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const name = params.name ?? '';
 
   const prefs = usePreferencesStore((s) => s.prefs);
@@ -166,6 +167,7 @@ export function RepoPage(): JSX.Element {
         useX
       });
       setExecResult(result);
+      void qc.invalidateQueries({ queryKey: ['history'] });
     } catch (err) {
       setExecResult({
         success: false,

@@ -10,6 +10,8 @@ import {
 } from '../services/git/cherry-pick.js';
 import { getPreferences } from '../services/preferences.service.js';
 import { notifyConflict, notifyError, notifySuccess } from '../services/notification.service.js';
+import { saveEntry } from '../services/history.service.js';
+import type { ExecuteResult, HistoryEntry } from '@shared/types.js';
 import { logError } from '../utils/logger.js';
 
 function reposRoot(): string {
@@ -79,6 +81,7 @@ export function registerGitHandlers(): void {
       } else if (res.error) {
         notifyError('Cherry-pick con error', `${params.repoName}: ${res.error}`);
       }
+      await persistHistory(res, params.repoName, params.sourceBranch, params.targetBranch, params.shas, duration);
       return { ...res, durationMs: duration };
     } catch (err) {
       logError('ipc git.execute', err, { params });
@@ -89,6 +92,7 @@ export function registerGitHandlers(): void {
   ipcMain.handle(
     IPC.git.continue,
     async (event, name: string, pendingShas: string[], opts: { useX: boolean }) => {
+      const startedAt = Date.now();
       try {
         const onProgress = emitterFor(event.sender);
         const res = await continueCherryPick(reposRoot(), name, pendingShas, {
@@ -102,6 +106,14 @@ export function registerGitHandlers(): void {
         } else if (res.error) {
           notifyError('Cherry-pick con error', `${name}: ${res.error}`);
         }
+        await persistHistory(
+          res,
+          name,
+          res.sourceBranch ?? '',
+          res.targetBranch ?? '',
+          pendingShas,
+          Date.now() - startedAt
+        );
         return res;
       } catch (err) {
         logError('ipc git.continue', err, { name });
@@ -111,13 +123,64 @@ export function registerGitHandlers(): void {
   );
 
   ipcMain.handle(IPC.git.abort, async (_e, name: string) => {
+    const startedAt = Date.now();
     try {
-      return await abortCherryPick(reposRoot(), name);
+      const res = await abortCherryPick(reposRoot(), name);
+      if (res.success) {
+        try {
+          await saveEntry({
+            timestamp: new Date().toISOString(),
+            repo: name,
+            sourceBranch: '',
+            targetBranch: '',
+            originalShas: [],
+            newShas: [],
+            result: 'aborted',
+            durationMs: Date.now() - startedAt
+          });
+        } catch (err) {
+          logError('history.saveEntry abort', err);
+        }
+      }
+      return res;
     } catch (err) {
       logError('ipc git.abort', err, { name });
       throw toClientError(err);
     }
   });
+}
+
+async function persistHistory(
+  res: ExecuteResult,
+  repo: string,
+  sourceBranch: string,
+  targetBranch: string,
+  originalShas: string[],
+  durationMs: number
+): Promise<void> {
+  const result: HistoryEntry['result'] = res.success
+    ? 'success'
+    : res.conflict
+      ? 'conflict'
+      : 'error';
+  const newShas = (res.results ?? [])
+    .filter((r) => r.ok && r.newSha)
+    .map((r) => r.newSha as string);
+  try {
+    await saveEntry({
+      timestamp: new Date().toISOString(),
+      repo,
+      sourceBranch,
+      targetBranch,
+      originalShas,
+      newShas,
+      result,
+      durationMs,
+      ...(res.error ? { notes: res.error } : {})
+    });
+  } catch (err) {
+    logError('history.saveEntry', err);
+  }
 }
 
 function toClientError(err: unknown): Error {

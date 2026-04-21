@@ -25,6 +25,7 @@ export async function saveEntry(entry: Omit<HistoryEntry, 'id'> & { id?: string 
 
   let release: (() => Promise<void>) | null = null;
   try {
+    if (!fs.existsSync(file)) await fsp.writeFile(file, '', 'utf8');
     release = await lockfile.lock(file, { retries: { retries: 5, minTimeout: 50, maxTimeout: 200 } });
     await fsp.appendFile(file, JSON.stringify(full) + '\n', 'utf8');
   } catch (err) {
