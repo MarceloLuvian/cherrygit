@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, GitBranch, RefreshCw } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { ArrowLeft, GitBranch, RefreshCw, Search } from 'lucide-react';
 import { api } from '@renderer/lib/api';
-import type { Branches } from '@shared/types';
+import type { Branches, Commit } from '@shared/types';
 import { Card, CardTitle, CardDescription } from '@renderer/components/ui/Card';
 import { Button } from '@renderer/components/ui/Button';
+import { Input } from '@renderer/components/ui/Input';
 import { Spinner } from '@renderer/components/ui/Spinner';
 import { usePreferencesStore } from '@renderer/stores/preferences.store';
 import { toastError } from '@renderer/components/feedback/Toast';
@@ -24,8 +25,55 @@ export function RepoPage(): JSX.Element {
   }, [prefs, loadPrefs]);
 
   const autoFetch = prefs?.autoFetch ?? true;
+  const defaultSinceDays = prefs?.defaultSinceDays ?? 30;
   const [sourceBranch, setSourceBranch] = useState<string>('');
   const [targetBranch, setTargetBranch] = useState<string>('');
+  const [since, setSince] = useState<string>('');
+  const [until, setUntil] = useState<string>('');
+  const [commits, setCommits] = useState<Commit[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<string>('');
+
+  useEffect(() => {
+    if (since) return;
+    const d = new Date();
+    d.setDate(d.getDate() - defaultSinceDays);
+    setSince(d.toISOString().slice(0, 10));
+  }, [defaultSinceDays, since]);
+
+  const commitsMut = useMutation({
+    mutationFn: () => api.git.listCommits(name, sourceBranch, since, until || undefined),
+    onSuccess: (data) => {
+      setCommits(data);
+      setSelected(new Set());
+    },
+    onError: (err) => toastError(err)
+  });
+
+  const filteredCommits = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return commits;
+    return commits.filter(
+      (c) => c.subject.toLowerCase().includes(q) || c.author.toLowerCase().includes(q)
+    );
+  }, [commits, filter]);
+
+  const toggleCommit = (sha: string): void => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(sha)) next.delete(sha);
+      else next.add(sha);
+      return next;
+    });
+  };
+
+  const selectAll = (): void => {
+    setSelected(new Set(commits.map((c) => c.fullSha)));
+  };
+
+  const selectNone = (): void => {
+    setSelected(new Set());
+  };
 
   const branchesQuery = useQuery<Branches>({
     queryKey: ['branches', name, autoFetch],
@@ -149,12 +197,150 @@ export function RepoPage(): JSX.Element {
         )}
       </Card>
 
-      {sourceBranch && targetBranch ? (
+      {sourceBranch ? (
         <Card>
-          <CardTitle>Proximos pasos</CardTitle>
+          <CardTitle>Rango de fechas</CardTitle>
           <CardDescription className="mt-1">
-            Filtrado por rango de fechas y seleccion de commits (proxima entrega).
+            Filtra los commits de <span className="font-mono">{sourceBranch}</span> por fecha. El
+            rango es inclusivo hasta el final del dia.
           </CardDescription>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="date-since" className="text-sm font-medium text-[var(--color-fg)]">
+                Desde
+              </label>
+              <input
+                id="date-since"
+                type="date"
+                value={since}
+                onChange={(e) => setSince(e.target.value)}
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-fg)] focus:border-[var(--color-primary)] focus:outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="date-until" className="text-sm font-medium text-[var(--color-fg)]">
+                Hasta{' '}
+                <span className="text-[var(--color-fg-muted)]">(opcional)</span>
+              </label>
+              <input
+                id="date-until"
+                type="date"
+                value={until}
+                onChange={(e) => setUntil(e.target.value)}
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-fg)] focus:border-[var(--color-primary)] focus:outline-none"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={() => commitsMut.mutate()}
+                loading={commitsMut.isPending}
+                disabled={!sourceBranch || !since}
+                className="w-full"
+                aria-label="Cargar commits del rango"
+              >
+                Cargar commits
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {commitsMut.isSuccess || commitsMut.isPending ? (
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>Commits</CardTitle>
+              <CardDescription className="mt-1">
+                Orden cronologico ascendente (mas viejo arriba). Selecciona los que quieras aplicar.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-[var(--color-fg-muted)]">
+                {selected.size} / {commits.length} seleccionados
+              </span>
+              <button
+                type="button"
+                onClick={selectAll}
+                disabled={commits.length === 0}
+                className="text-[var(--color-primary)] hover:underline disabled:opacity-50"
+              >
+                Marcar todos
+              </button>
+              <button
+                type="button"
+                onClick={selectNone}
+                disabled={selected.size === 0}
+                className="text-[var(--color-primary)] hover:underline disabled:opacity-50"
+              >
+                Desmarcar todos
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mt-3">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-fg-subtle)]"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              placeholder="Filtrar por subject o autor..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              aria-label="Filtrar commits"
+              className="pl-8"
+            />
+          </div>
+
+          <div className="mt-3 max-h-[480px] overflow-auto">
+            {commitsMut.isPending ? (
+              <div className="flex items-center gap-2 py-4 text-sm text-[var(--color-fg-muted)]">
+                <Spinner size={14} />
+                Cargando commits...
+              </div>
+            ) : filteredCommits.length === 0 ? (
+              <p className="py-4 text-center text-sm text-[var(--color-fg-muted)]">
+                {commits.length === 0
+                  ? 'No hay commits en el rango seleccionado.'
+                  : 'Ningun commit coincide con el filtro.'}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {filteredCommits.map((c) => {
+                  const checked = selected.has(c.fullSha);
+                  return (
+                    <li key={c.fullSha}>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--color-border)] px-3 py-2 hover:bg-[var(--color-bg-muted)]">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleCommit(c.fullSha)}
+                          className="mt-1 rounded border-[var(--color-border)]"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-fg-muted)]">
+                            <span
+                              className="font-mono font-semibold text-[var(--color-fg)]"
+                              title={c.fullSha}
+                            >
+                              {c.shortSha}
+                            </span>
+                            <span>{c.date.slice(0, 19).replace('T', ' ')}</span>
+                            <span className="truncate">{c.author}</span>
+                          </div>
+                          <div className="mt-0.5 break-words text-sm text-[var(--color-fg)]">
+                            {c.subject}
+                          </div>
+                        </div>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </Card>
       ) : null}
     </div>

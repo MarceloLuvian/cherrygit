@@ -16,3 +16,4 @@ resources/icon.ico
 resources/icon.png
 resources/icons/
 *.tsbuildinfo
+.claude/
