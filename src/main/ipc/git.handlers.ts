@@ -12,7 +12,7 @@ import { getPreferences } from '../services/preferences.service.js';
 import { notifyConflict, notifyError, notifySuccess } from '../services/notification.service.js';
 import { saveEntry } from '../services/history.service.js';
 import type { ExecuteResult, HistoryEntry } from '@shared/types.js';
-import { logError } from '../utils/logger.js';
+import { logError, logInfo } from '../utils/logger.js';
 
 function reposRoot(): string {
   return getPreferences().reposRoot;
@@ -61,6 +61,14 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle(IPC.git.execute, async (event, params: ExecuteParams) => {
     const startedAt = Date.now();
+    logInfo('user.cherryPick.execute.start', {
+      repo: params.repoName,
+      sourceBranch: params.sourceBranch,
+      targetBranch: params.targetBranch,
+      useX: params.useX !== false,
+      shaCount: params.shas?.length ?? 0,
+      shas: params.shas
+    });
     try {
       const onProgress = emitterFor(event.sender);
       const res = await executeCherryPick(
@@ -71,6 +79,16 @@ export function registerGitHandlers(): void {
         { useX: params.useX, sourceBranch: params.sourceBranch, onProgress }
       );
       const duration = Date.now() - startedAt;
+      logInfo('user.cherryPick.execute.end', {
+        repo: params.repoName,
+        success: res.success,
+        conflict: res.conflict === true,
+        conflictAt: res.conflictAt,
+        applied: (res.results ?? []).filter((r) => r.ok).length,
+        failed: (res.results ?? []).filter((r) => !r.ok).length,
+        durationMs: duration,
+        error: res.error
+      });
       if (res.success) {
         notifySuccess(
           'Cherry-pick completado',
@@ -93,11 +111,25 @@ export function registerGitHandlers(): void {
     IPC.git.continue,
     async (event, name: string, pendingShas: string[], opts: { useX: boolean }) => {
       const startedAt = Date.now();
+      logInfo('user.cherryPick.continue.start', {
+        repo: name,
+        useX: opts?.useX !== false,
+        pendingCount: pendingShas?.length ?? 0,
+        pendingShas
+      });
       try {
         const onProgress = emitterFor(event.sender);
         const res = await continueCherryPick(reposRoot(), name, pendingShas, {
           useX: opts?.useX !== false,
           onProgress
+        });
+        logInfo('user.cherryPick.continue.end', {
+          repo: name,
+          success: res.success,
+          conflict: res.conflict === true,
+          applied: (res.results ?? []).filter((r) => r.ok).length,
+          durationMs: Date.now() - startedAt,
+          error: res.error
         });
         if (res.success) {
           notifySuccess('Cherry-pick continuado', `${name}: operacion completada.`);
@@ -124,8 +156,15 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle(IPC.git.abort, async (_e, name: string) => {
     const startedAt = Date.now();
+    logInfo('user.cherryPick.abort.start', { repo: name });
     try {
       const res = await abortCherryPick(reposRoot(), name);
+      logInfo('user.cherryPick.abort.end', {
+        repo: name,
+        success: res.success,
+        durationMs: Date.now() - startedAt,
+        error: res.error
+      });
       if (res.success) {
         try {
           await saveEntry({

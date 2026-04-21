@@ -13,7 +13,15 @@ import {
   Search
 } from 'lucide-react';
 import { api } from '@renderer/lib/api';
-import type { Branches, Commit, ExecuteResult, Progress, Repo, StepResult } from '@shared/types';
+import type {
+  Branches,
+  Commit,
+  ExecuteResult,
+  Progress,
+  Repo,
+  RepoStatus,
+  StepResult
+} from '@shared/types';
 import { Card, CardTitle, CardDescription } from '@renderer/components/ui/Card';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
@@ -23,6 +31,7 @@ import { toast, toastError } from '@renderer/components/feedback/Toast';
 import { CommitDetailDrawer } from './CommitDetailDrawer';
 import { ConfirmExecuteModal } from './ConfirmExecuteModal';
 import { ConflictPanel } from './ConflictPanel';
+import { InProgressPanel } from './InProgressPanel';
 import { SuccessPanel } from './SuccessPanel';
 
 type ExecStatus = 'idle' | 'confirming' | 'checking' | 'executing' | 'done';
@@ -183,6 +192,7 @@ export function RepoPage(): JSX.Element {
       progressUnsub.current?.();
       progressUnsub.current = null;
       setExecStatus('done');
+      void qc.invalidateQueries({ queryKey: ['status', name] });
     }
   };
 
@@ -245,6 +255,14 @@ export function RepoPage(): JSX.Element {
     [reposQuery.data, name]
   );
 
+  const statusQuery = useQuery<RepoStatus>({
+    queryKey: ['status', name],
+    queryFn: () => api.repos.getStatus(name),
+    enabled: Boolean(name),
+    refetchOnWindowFocus: true
+  });
+  const cherryInProgress = statusQuery.data?.cherryPickInProgress === true;
+
   useEffect(() => {
     if (branchesQuery.error) toastError(branchesQuery.error);
   }, [branchesQuery.error]);
@@ -297,6 +315,23 @@ export function RepoPage(): JSX.Element {
           </span>
         ) : null}
       </div>
+
+      {cherryInProgress && statusQuery.data ? (
+        <InProgressPanel
+          repoName={name}
+          repoPath={repoPath}
+          status={statusQuery.data}
+          useX={useX}
+          onResolved={() => {
+            setExecResult(null);
+            setDirtyFiles([]);
+            setProgressEvents([]);
+            setExecStatus('idle');
+            void statusQuery.refetch();
+            void qc.invalidateQueries({ queryKey: ['history'] });
+          }}
+        />
+      ) : null}
 
       <Card>
         <div className="flex items-start justify-between gap-3">
@@ -529,10 +564,16 @@ export function RepoPage(): JSX.Element {
                 selected.size === 0 ||
                 !targetBranch ||
                 execStatus === 'checking' ||
-                execStatus === 'executing'
+                execStatus === 'executing' ||
+                cherryInProgress
               }
               loading={execStatus === 'checking' || execStatus === 'executing'}
               aria-label="Ejecutar cherry-pick"
+              title={
+                cherryInProgress
+                  ? 'Hay un cherry-pick en progreso. Continualo o abortalo antes de iniciar otro.'
+                  : undefined
+              }
             >
               <Play size={14} aria-hidden="true" />
               {execStatus === 'executing' ? 'Ejecutando...' : 'Ejecutar cherry-pick'}
@@ -586,7 +627,11 @@ export function RepoPage(): JSX.Element {
           repoPath={repoPath}
           result={execResult}
           useX={useX}
-          onResolved={(next) => setExecResult(next)}
+          onResolved={(next) => {
+            setExecResult(next);
+            void qc.invalidateQueries({ queryKey: ['status', name] });
+            void qc.invalidateQueries({ queryKey: ['history'] });
+          }}
         />
       ) : null}
 
