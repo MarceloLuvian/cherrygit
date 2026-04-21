@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, GitBranch, RefreshCw, Search } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  GitBranch,
+  Play,
+  RefreshCw,
+  Search
+} from 'lucide-react';
 import { api } from '@renderer/lib/api';
-import type { Branches, Commit } from '@shared/types';
+import type { Branches, Commit, ExecuteResult, Progress, StepResult } from '@shared/types';
 import { Card, CardTitle, CardDescription } from '@renderer/components/ui/Card';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
@@ -11,6 +20,9 @@ import { Spinner } from '@renderer/components/ui/Spinner';
 import { usePreferencesStore } from '@renderer/stores/preferences.store';
 import { toastError } from '@renderer/components/feedback/Toast';
 import { CommitDetailDrawer } from './CommitDetailDrawer';
+import { ConfirmExecuteModal } from './ConfirmExecuteModal';
+
+type ExecStatus = 'idle' | 'confirming' | 'checking' | 'executing' | 'done';
 
 export function RepoPage(): JSX.Element {
   const params = useParams<{ name: string }>();
@@ -35,6 +47,22 @@ export function RepoPage(): JSX.Element {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<string>('');
   const [detailSha, setDetailSha] = useState<string | null>(null);
+
+  const [useX, setUseX] = useState<boolean>(true);
+  useEffect(() => {
+    if (prefs) setUseX(prefs.useX);
+  }, [prefs]);
+
+  const [execStatus, setExecStatus] = useState<ExecStatus>('idle');
+  const [progressEvents, setProgressEvents] = useState<Progress[]>([]);
+  const [execResult, setExecResult] = useState<ExecuteResult | null>(null);
+  const [dirtyFiles, setDirtyFiles] = useState<string[]>([]);
+  const progressUnsub = useRef<(() => void) | null>(null);
+
+  const selectedCommits = useMemo(
+    () => commits.filter((c) => selected.has(c.fullSha)),
+    [commits, selected]
+  );
 
   useEffect(() => {
     if (since) return;
@@ -76,6 +104,88 @@ export function RepoPage(): JSX.Element {
   const selectNone = (): void => {
     setSelected(new Set());
   };
+
+  const handleToggleUseX = useCallback(
+    (v: boolean) => {
+      setUseX(v);
+      if (prefs) void setPrefs({ useX: v });
+    },
+    [prefs, setPrefs]
+  );
+
+  const openConfirm = (): void => {
+    if (selectedCommits.length === 0 || !targetBranch) return;
+    setExecResult(null);
+    setDirtyFiles([]);
+    setProgressEvents([]);
+    setExecStatus('confirming');
+  };
+
+  const runExecute = async (): Promise<void> => {
+    setExecStatus('checking');
+    try {
+      const status = await api.repos.getStatus(name);
+      if (!status.clean) {
+        setDirtyFiles(
+          status.unresolvedConflicts.length > 0
+            ? status.unresolvedConflicts
+            : ['(working tree con cambios sin commitear)']
+        );
+        setExecStatus('done');
+        setExecResult({
+          success: false,
+          steps: [],
+          results: [],
+          repo: name,
+          sourceBranch,
+          targetBranch,
+          error: 'Working tree no esta limpio. Haz commit o stash antes de continuar.'
+        });
+        return;
+      }
+    } catch (err) {
+      toastError(err);
+      setExecStatus('idle');
+      return;
+    }
+
+    progressUnsub.current?.();
+    progressUnsub.current = api.progress.subscribe((p) => {
+      setProgressEvents((prev) => [...prev, p]);
+    });
+
+    setExecStatus('executing');
+    try {
+      const result = await api.git.execute({
+        repoName: name,
+        sourceBranch,
+        targetBranch,
+        shas: selectedCommits.map((c) => c.fullSha),
+        useX
+      });
+      setExecResult(result);
+    } catch (err) {
+      setExecResult({
+        success: false,
+        steps: [],
+        results: [],
+        repo: name,
+        sourceBranch,
+        targetBranch,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    } finally {
+      progressUnsub.current?.();
+      progressUnsub.current = null;
+      setExecStatus('done');
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      progressUnsub.current?.();
+    };
+  }, []);
 
   const branchesQuery = useQuery<Branches>({
     queryKey: ['branches', name, autoFetch],
@@ -352,6 +462,99 @@ export function RepoPage(): JSX.Element {
         </Card>
       ) : null}
 
+      {commits.length > 0 && targetBranch ? (
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>Ejecutar</CardTitle>
+              <CardDescription className="mt-1">
+                {selected.size} commit(s) se aplicaran sobre{' '}
+                <span className="font-mono">{targetBranch}</span>.
+              </CardDescription>
+            </div>
+            <Button
+              onClick={openConfirm}
+              disabled={
+                selected.size === 0 ||
+                !targetBranch ||
+                execStatus === 'checking' ||
+                execStatus === 'executing'
+              }
+              loading={execStatus === 'checking' || execStatus === 'executing'}
+              aria-label="Ejecutar cherry-pick"
+            >
+              <Play size={14} aria-hidden="true" />
+              {execStatus === 'executing' ? 'Ejecutando...' : 'Ejecutar cherry-pick'}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {execStatus === 'executing' || (execStatus === 'done' && progressEvents.length > 0) ? (
+        <Card>
+          <CardTitle>Progreso</CardTitle>
+          <ProgressList
+            events={progressEvents}
+            steps={execResult?.steps ?? []}
+            running={execStatus === 'executing'}
+          />
+        </Card>
+      ) : null}
+
+      {dirtyFiles.length > 0 ? (
+        <Card className="border-[var(--color-warning)]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              size={18}
+              className="mt-0.5 text-[var(--color-warning)]"
+              aria-hidden="true"
+            />
+            <div className="flex-1">
+              <CardTitle>Working tree no esta limpio</CardTitle>
+              <CardDescription className="mt-1">
+                Haz commit o stash de tus cambios antes de continuar. Archivos afectados:
+              </CardDescription>
+              <pre className="mt-2 max-h-40 overflow-auto rounded bg-[var(--color-bg-muted)] p-2 font-mono text-xs text-[var(--color-fg)]">
+                {dirtyFiles.join('\n')}
+              </pre>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {execStatus === 'done' && execResult && !execResult.success && !execResult.conflict
+        ? (
+          <Card className="border-[var(--color-danger)]">
+            <div className="flex items-start gap-3">
+              <CircleAlert
+                size={18}
+                className="mt-0.5 text-[var(--color-danger)]"
+                aria-hidden="true"
+              />
+              <div>
+                <CardTitle>Error</CardTitle>
+                <CardDescription className="mt-1 text-[var(--color-danger)]">
+                  {execResult.error ?? 'Fallo sin detalle.'}
+                </CardDescription>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+      <ConfirmExecuteModal
+        open={execStatus === 'confirming'}
+        repoName={name}
+        targetBranch={targetBranch}
+        selectedCommits={selectedCommits}
+        useX={useX}
+        onToggleUseX={handleToggleUseX}
+        onCancel={() => setExecStatus('idle')}
+        onConfirm={() => {
+          setExecStatus('idle');
+          void runExecute();
+        }}
+      />
+
       <CommitDetailDrawer
         repoName={name}
         sha={detailSha}
@@ -359,6 +562,72 @@ export function RepoPage(): JSX.Element {
       />
     </div>
   );
+}
+
+interface ProgressListProps {
+  events: Progress[];
+  steps: StepResult[];
+  running: boolean;
+}
+
+function ProgressList({ events, steps, running }: ProgressListProps): JSX.Element {
+  const lines = events.length > 0
+    ? events.map((e, i) => ({
+        key: `${i}-${e.step ?? e.phase}`,
+        label: formatProgressLabel(e),
+        ok: e.ok !== false,
+        error: e.error,
+        running: running && i === events.length - 1 && e.ok !== false
+      }))
+    : steps.map((s, i) => ({
+        key: `${i}-${s.step}`,
+        label: s.step,
+        ok: s.ok,
+        error: s.stderr,
+        running: false
+      }));
+
+  if (lines.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-[var(--color-fg-muted)]">
+        Esperando al primer paso...
+      </p>
+    );
+  }
+
+  return (
+    <ul className="mt-3 flex flex-col gap-1">
+      {lines.map((l) => (
+        <li
+          key={l.key}
+          className="flex items-start gap-2 rounded border border-[var(--color-border)] px-2 py-1.5 text-xs"
+        >
+          <span className="mt-0.5 shrink-0">
+            {l.running ? (
+              <Spinner size={12} />
+            ) : l.ok ? (
+              <Check size={12} className="text-[var(--color-success)]" aria-hidden="true" />
+            ) : (
+              <CircleAlert size={12} className="text-[var(--color-danger)]" aria-hidden="true" />
+            )}
+          </span>
+          <span className="flex-1 break-words font-mono text-[var(--color-fg)]">{l.label}</span>
+          {l.error ? (
+            <span className="shrink-0 text-[var(--color-danger)]" title={l.error}>
+              error
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function formatProgressLabel(e: Progress): string {
+  const step = e.step ?? e.phase;
+  if (e.sha && e.newSha) return `${step}: ${e.sha.slice(0, 7)} -> ${e.newSha.slice(0, 7)}`;
+  if (e.sha) return `${step}: ${e.sha.slice(0, 7)}`;
+  return step;
 }
 
 interface BranchOption {
