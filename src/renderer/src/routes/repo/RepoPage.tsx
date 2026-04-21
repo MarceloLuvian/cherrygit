@@ -22,6 +22,7 @@ import { toastError } from '@renderer/components/feedback/Toast';
 import { CommitDetailDrawer } from './CommitDetailDrawer';
 import { ConfirmExecuteModal } from './ConfirmExecuteModal';
 import { ConflictPanel } from './ConflictPanel';
+import { SuccessPanel } from './SuccessPanel';
 
 type ExecStatus = 'idle' | 'confirming' | 'checking' | 'executing' | 'done';
 
@@ -531,6 +532,10 @@ export function RepoPage(): JSX.Element {
             </div>
           </div>
         </Card>
+      ) : null}
+
+      {execStatus === 'done' && execResult?.success && !execResult.conflict ? (
+        <SuccessPanel repoName={name} result={execResult} commits={commits} />
       ) : null}
 
       {execStatus === 'done' && execResult?.conflict ? (
