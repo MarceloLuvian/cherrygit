@@ -10,6 +10,7 @@ import { Input } from '@renderer/components/ui/Input';
 import { Spinner } from '@renderer/components/ui/Spinner';
 import { usePreferencesStore } from '@renderer/stores/preferences.store';
 import { toastError } from '@renderer/components/feedback/Toast';
+import { CommitDetailDrawer } from './CommitDetailDrawer';
 
 export function RepoPage(): JSX.Element {
   const params = useParams<{ name: string }>();
@@ -33,6 +34,7 @@ export function RepoPage(): JSX.Element {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<string>('');
+  const [detailSha, setDetailSha] = useState<string | null>(null);
 
   useEffect(() => {
     if (since) return;
@@ -312,14 +314,20 @@ export function RepoPage(): JSX.Element {
                   const checked = selected.has(c.fullSha);
                   return (
                     <li key={c.fullSha}>
-                      <label className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--color-border)] px-3 py-2 hover:bg-[var(--color-bg-muted)]">
+                      <div className="flex items-start gap-3 rounded-md border border-[var(--color-border)] px-3 py-2 hover:bg-[var(--color-bg-muted)]">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleCommit(c.fullSha)}
-                          className="mt-1 rounded border-[var(--color-border)]"
+                          aria-label={`Seleccionar commit ${c.shortSha}`}
+                          className="mt-1 cursor-pointer rounded border-[var(--color-border)]"
                         />
-                        <div className="min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => setDetailSha(c.fullSha)}
+                          className="min-w-0 flex-1 cursor-pointer text-left"
+                          aria-label={`Ver detalle de ${c.shortSha}: ${c.subject}`}
+                        >
                           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-fg-muted)]">
                             <span
                               className="font-mono font-semibold text-[var(--color-fg)]"
@@ -333,8 +341,8 @@ export function RepoPage(): JSX.Element {
                           <div className="mt-0.5 break-words text-sm text-[var(--color-fg)]">
                             {c.subject}
                           </div>
-                        </div>
-                      </label>
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -343,6 +351,12 @@ export function RepoPage(): JSX.Element {
           </div>
         </Card>
       ) : null}
+
+      <CommitDetailDrawer
+        repoName={name}
+        sha={detailSha}
+        onClose={() => setDetailSha(null)}
+      />
     </div>
   );
 }
