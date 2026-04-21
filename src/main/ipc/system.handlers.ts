@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron';
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import { IPC } from '@shared/ipc-channels.js';
@@ -44,6 +44,24 @@ export function registerSystemHandlers(): void {
       newWindow();
     } catch (err) {
       logError('ipc sys.newWindow', err);
+      throw toClientError(err);
+    }
+  });
+
+  ipcMain.handle(IPC.system.pickDirectory, async (event) => {
+    try {
+      const sender = BrowserWindow.fromWebContents(event.sender);
+      const opts: Electron.OpenDialogOptions = {
+        title: 'Selecciona la carpeta base de tus repos',
+        properties: ['openDirectory', 'createDirectory']
+      };
+      const result = sender
+        ? await dialog.showOpenDialog(sender, opts)
+        : await dialog.showOpenDialog(opts);
+      if (result.canceled || result.filePaths.length === 0) return null;
+      return result.filePaths[0] ?? null;
+    } catch (err) {
+      logError('ipc sys.pickDirectory', err);
       throw toClientError(err);
     }
   });

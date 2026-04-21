@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { FolderOpen } from 'lucide-react';
 import type { Preferences } from '@shared/types';
 import { ThemeToggle } from '@renderer/components/layout/ThemeToggle';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
 import { Card, CardTitle, CardDescription } from '@renderer/components/ui/Card';
 import { Spinner } from '@renderer/components/ui/Spinner';
+import { api } from '@renderer/lib/api';
 import { usePreferencesStore } from '@renderer/stores/preferences.store';
 import { toast, toastError } from '@renderer/components/feedback/Toast';
 
@@ -67,6 +69,15 @@ export function PreferencesPage(): JSX.Element {
     }
   };
 
+  const handlePickFolder = async (): Promise<void> => {
+    try {
+      const picked = await api.system.pickDirectory();
+      if (picked) update('reposRoot', picked);
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   const dirty = prefs ? JSON.stringify(prefs) !== JSON.stringify(draft) : false;
 
   return (
@@ -78,7 +89,6 @@ export function PreferencesPage(): JSX.Element {
         </p>
       </div>
 
-      {/* Tema */}
       <Card>
         <CardTitle>Tema</CardTitle>
         <CardDescription className="mt-1">
@@ -89,7 +99,31 @@ export function PreferencesPage(): JSX.Element {
         </div>
       </Card>
 
-      {/* Editor */}
+      <Card>
+        <CardTitle>Carpeta base de repos</CardTitle>
+        <CardDescription className="mt-1">
+          Directorio que contiene tus clones locales. Cada subcarpeta con un{' '}
+          <code className="font-mono">.git</code> se detecta como repo.
+        </CardDescription>
+        <div className="mt-3 flex items-center gap-2">
+          <Input
+            value={draft.reposRoot}
+            onChange={(e) => update('reposRoot', e.target.value)}
+            aria-label="Ruta de carpeta base de repos"
+            className="flex-1"
+          />
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handlePickFolder}
+            aria-label="Elegir carpeta"
+          >
+            <FolderOpen size={14} aria-hidden="true" />
+            Elegir carpeta
+          </Button>
+        </div>
+      </Card>
+
       <Card>
         <CardTitle>Editor externo</CardTitle>
         <CardDescription className="mt-1">
@@ -114,7 +148,6 @@ export function PreferencesPage(): JSX.Element {
         </div>
       </Card>
 
-      {/* Terminal */}
       <Card>
         <CardTitle>Terminal</CardTitle>
         <CardDescription className="mt-1">
@@ -139,7 +172,6 @@ export function PreferencesPage(): JSX.Element {
         </div>
       </Card>
 
-      {/* Cherry-pick */}
       <Card>
         <CardTitle>Cherry-pick</CardTitle>
         <CardDescription className="mt-1">
@@ -188,18 +220,33 @@ export function PreferencesPage(): JSX.Element {
             />
             <span>Mostrar notificaciones del sistema al terminar</span>
           </label>
-        </div>
-      </Card>
 
-      {/* Ruta de clones */}
-      <Card>
-        <CardTitle>Ubicacion de clones</CardTitle>
-        <CardDescription className="mt-1">
-          Directorio donde se almacenan los repositorios clonados.
-          {/* TODO: permitir editar/elegir folder (requiere IPC dialog.showOpenDialog). */}
-        </CardDescription>
-        <div className="mt-3">
-          <Input value={draft.clonesRoot} readOnly aria-label="Ruta de clones (solo lectura)" />
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={draft.autoFetch}
+              onChange={(e) => update('autoFetch', e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>Hacer <code className="font-mono text-xs">fetch</code> automatico al listar ramas</span>
+          </label>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="since-days" className="text-sm">
+              Rango por defecto para listar commits (dias)
+            </label>
+            <Input
+              id="since-days"
+              type="number"
+              min={1}
+              max={365}
+              value={String(draft.defaultSinceDays)}
+              onChange={(e) =>
+                update('defaultSinceDays', Math.max(1, parseInt(e.target.value, 10) || 1))
+              }
+              className="w-28"
+            />
+          </div>
         </div>
       </Card>
 

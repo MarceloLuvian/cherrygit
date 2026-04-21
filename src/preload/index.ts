@@ -10,42 +10,34 @@ import type {
   ExecuteResult,
   HistoryEntry,
   HistoryFilters,
-  LocalRepo,
   Preferences,
   Progress,
   Repo,
   RepoStatus,
-  Session,
   ThemeMode
 } from '../shared/types';
 
 const api: CherryGitAPI = {
-  auth: {
-    getSession: () => ipcRenderer.invoke(IPC.auth.getSession) as Promise<Session | null>,
-    login: (token: string) => ipcRenderer.invoke(IPC.auth.login, token) as Promise<Session>,
-    logout: () => ipcRenderer.invoke(IPC.auth.logout) as Promise<void>
-  },
   repos: {
-    list: (force?: boolean) => ipcRenderer.invoke(IPC.repos.list, !!force) as Promise<Repo[]>,
-    clone: (owner: string, name: string) =>
-      ipcRenderer.invoke(IPC.repos.clone, owner, name) as Promise<LocalRepo>,
-    getLocalClones: () => ipcRenderer.invoke(IPC.repos.localClones) as Promise<LocalRepo[]>,
-    openInFinder: (fullName: string) =>
-      ipcRenderer.invoke(IPC.repos.openInFinder, fullName) as Promise<void>
+    list: () => ipcRenderer.invoke(IPC.repos.list) as Promise<Repo[]>,
+    refresh: () => ipcRenderer.invoke(IPC.repos.refresh) as Promise<Repo[]>,
+    openInFinder: (name: string) =>
+      ipcRenderer.invoke(IPC.repos.openInFinder, name) as Promise<void>,
+    getStatus: (name: string) =>
+      ipcRenderer.invoke(IPC.repos.getStatus, name) as Promise<RepoStatus>
   },
   git: {
-    listBranches: (repo: string) =>
-      ipcRenderer.invoke(IPC.git.listBranches, repo) as Promise<Branches>,
-    listCommits: (repo: string, branch: string, since: string, until?: string) =>
-      ipcRenderer.invoke(IPC.git.listCommits, repo, branch, since, until) as Promise<Commit[]>,
-    inspect: (repo: string, shas: string[]) =>
-      ipcRenderer.invoke(IPC.git.inspect, repo, shas) as Promise<CommitDetail[]>,
+    listBranches: (name: string) =>
+      ipcRenderer.invoke(IPC.git.listBranches, name) as Promise<Branches>,
+    listCommits: (name: string, branch: string, since: string, until?: string) =>
+      ipcRenderer.invoke(IPC.git.listCommits, name, branch, since, until) as Promise<Commit[]>,
+    inspect: (name: string, shas: string[]) =>
+      ipcRenderer.invoke(IPC.git.inspect, name, shas) as Promise<CommitDetail[]>,
     execute: (params: ExecuteParams) =>
       ipcRenderer.invoke(IPC.git.execute, params) as Promise<ExecuteResult>,
-    continueOp: (repo: string, pendingShas: string[], opts: { useX: boolean }) =>
-      ipcRenderer.invoke(IPC.git.continue, repo, pendingShas, opts) as Promise<ExecuteResult>,
-    abort: (repo: string) => ipcRenderer.invoke(IPC.git.abort, repo) as Promise<AbortResult>,
-    getStatus: (repo: string) => ipcRenderer.invoke(IPC.git.status, repo) as Promise<RepoStatus>
+    continueOp: (name: string, pendingShas: string[], opts: { useX: boolean }) =>
+      ipcRenderer.invoke(IPC.git.continue, name, pendingShas, opts) as Promise<ExecuteResult>,
+    abort: (name: string) => ipcRenderer.invoke(IPC.git.abort, name) as Promise<AbortResult>
   },
   history: {
     list: (filters?: HistoryFilters) =>
@@ -63,7 +55,8 @@ const api: CherryGitAPI = {
     openInTerminal: (p: string) =>
       ipcRenderer.invoke(IPC.system.openInTerminal, p) as Promise<void>,
     openInFinder: (p: string) => ipcRenderer.invoke(IPC.system.openInFinder, p) as Promise<void>,
-    newWindow: () => ipcRenderer.invoke(IPC.system.newWindow) as Promise<void>
+    newWindow: () => ipcRenderer.invoke(IPC.system.newWindow) as Promise<void>,
+    pickDirectory: () => ipcRenderer.invoke(IPC.system.pickDirectory) as Promise<string | null>
   },
   theme: {
     get: () =>

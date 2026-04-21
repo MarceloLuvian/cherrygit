@@ -1,53 +1,49 @@
-import { BrowserWindow, ipcMain, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import { IPC } from '@shared/ipc-channels.js';
-import type { Progress } from '@shared/types.js';
-import { listRepos } from '../services/github.service.js';
-import { cloneRepo, getLocalClones, resolveRepoPath } from '../services/clone.service.js';
+import { listRepos } from '../services/git/repos.js';
+import { getStatus } from '../services/git/cherry-pick.js';
+import { resolveRepoPath } from '../services/git/validators.js';
+import { getPreferences } from '../services/preferences.service.js';
 import { logError } from '../utils/logger.js';
 
+function reposRoot(): string {
+  return getPreferences().reposRoot;
+}
+
 export function registerReposHandlers(): void {
-  ipcMain.handle(IPC.repos.list, async (_e, force?: boolean) => {
+  ipcMain.handle(IPC.repos.list, async () => {
     try {
-      return await listRepos(Boolean(force));
+      return await listRepos(reposRoot());
     } catch (err) {
       logError('ipc repos.list', err);
       throw toClientError(err);
     }
   });
 
-  ipcMain.handle(IPC.repos.clone, async (event, owner: string, name: string) => {
+  ipcMain.handle(IPC.repos.refresh, async () => {
     try {
-      const sender = BrowserWindow.fromWebContents(event.sender);
-      const emit = (p: Progress): void => {
-        if (sender && !sender.isDestroyed()) {
-          sender.webContents.send(IPC.progress.event, p);
-        }
-      };
-      const localRepo = await cloneRepo(owner, name, (line) => {
-        emit({ phase: 'clone', message: line.trim() });
-      });
-      return localRepo;
+      return await listRepos(reposRoot());
     } catch (err) {
-      logError('ipc repos.clone', err, { owner, name });
+      logError('ipc repos.refresh', err);
       throw toClientError(err);
     }
   });
 
-  ipcMain.handle(IPC.repos.localClones, async () => {
+  ipcMain.handle(IPC.repos.openInFinder, async (_e, name: string) => {
     try {
-      return await getLocalClones();
+      const p = resolveRepoPath(reposRoot(), name);
+      await shell.openPath(p);
     } catch (err) {
-      logError('ipc repos.localClones', err);
+      logError('ipc repos.openInFinder', err, { name });
       throw toClientError(err);
     }
   });
 
-  ipcMain.handle(IPC.repos.openInFinder, async (_e, fullName: string) => {
+  ipcMain.handle(IPC.repos.getStatus, async (_e, name: string) => {
     try {
-      const p = await resolveRepoPath(fullName);
-      shell.openPath(p);
+      return await getStatus(reposRoot(), name);
     } catch (err) {
-      logError('ipc repos.openInFinder', err, { fullName });
+      logError('ipc repos.getStatus', err, { name });
       throw toClientError(err);
     }
   });

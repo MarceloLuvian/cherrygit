@@ -1,9 +1,8 @@
 import { app } from 'electron';
 import path from 'node:path';
+import os from 'node:os';
 import fs from 'node:fs';
 
-// Lazy-evaluated to ensure app is ready when imported from handlers,
-// but also export a function form for early callers.
 function ensureDir(dir: string): string {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -15,8 +14,12 @@ export function getAppSupportDir(): string {
   return ensureDir(app.getPath('userData'));
 }
 
-export function getReposDir(): string {
-  return ensureDir(path.join(getAppSupportDir(), 'repos'));
+/**
+ * Default location for the user's local git clones.
+ * The user can override this via preferences (`reposRoot`).
+ */
+export function getDefaultReposRoot(): string {
+  return path.join(os.homedir(), 'OXXO', 'POS Móvil transición', 'OXXO_PROJECTs');
 }
 
 export function getHistoryFile(): string {
@@ -36,24 +39,9 @@ export function getLogFile(): string {
   return path.join(getLogsDir(), 'app.log');
 }
 
-export function getRepoLocalPath(fullName: string): string {
-  const [owner, name] = fullName.split('/');
-  if (!owner || !name) {
-    throw new Error(`fullName invalido: ${fullName}`);
-  }
-  return path.join(getReposDir(), owner, name);
-}
-
-// Exported constants with getters for convenience
 export const APP_SUPPORT_DIR = {
   get path(): string {
     return getAppSupportDir();
-  }
-};
-
-export const REPOS_DIR = {
-  get path(): string {
-    return getReposDir();
   }
 };
 
