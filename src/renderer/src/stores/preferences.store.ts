@@ -33,7 +33,6 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await api.preferences.set(partial);
-      // Releer para tener el estado canonico desde main
       const fresh = await api.preferences.get();
       set({ prefs: fresh, loading: false });
     } catch (err) {
@@ -41,10 +40,8 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
         loading: false,
         error: err instanceof Error ? err.message : String(err)
       });
-      // propagar para que el caller pueda mostrar error
       throw err;
     }
-    // useless return to avoid tree-shake warnings about unused `get`
     void get;
   }
 }));

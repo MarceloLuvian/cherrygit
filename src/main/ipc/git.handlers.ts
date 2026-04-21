@@ -1,55 +1,83 @@
-import { ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, type WebContents } from 'electron';
 import { IPC } from '@shared/ipc-channels.js';
-import type { ExecuteParams } from '@shared/types.js';
-import * as gitService from '../services/git.service.js';
+import type { ExecuteParams, Progress } from '@shared/types.js';
+import { listBranches } from '../services/git/branches.js';
+import { listCommitsInRange, inspectCommits } from '../services/git/commits.js';
+import {
+  abortCherryPick,
+  continueCherryPick,
+  executeCherryPick
+} from '../services/git/cherry-pick.js';
+import { getPreferences } from '../services/preferences.service.js';
 import { notifyConflict, notifyError, notifySuccess } from '../services/notification.service.js';
 import { logError } from '../utils/logger.js';
 
+function reposRoot(): string {
+  return getPreferences().reposRoot;
+}
+
+function emitterFor(sender: WebContents): (p: Progress) => void {
+  const win = BrowserWindow.fromWebContents(sender);
+  return (p: Progress): void => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(IPC.progress.event, p);
+    }
+  };
+}
+
 export function registerGitHandlers(): void {
-  ipcMain.handle(IPC.git.listBranches, async (_e, repoFullName: string) => {
+  ipcMain.handle(IPC.git.listBranches, async (_e, name: string) => {
     try {
-      return await gitService.listBranches(repoFullName);
+      const autoFetch = getPreferences().autoFetch !== false;
+      return await listBranches(reposRoot(), name, { fetch: autoFetch });
     } catch (err) {
-      logError('ipc git.listBranches', err, { repoFullName });
+      logError('ipc git.listBranches', err, { name });
       throw toClientError(err);
     }
   });
 
   ipcMain.handle(
     IPC.git.listCommits,
-    async (_e, repoFullName: string, branch: string, since: string, until?: string) => {
+    async (_e, name: string, branch: string, since: string, until?: string) => {
       try {
-        return await gitService.listCommits(repoFullName, branch, since, until);
+        return await listCommitsInRange(reposRoot(), name, branch, since, until);
       } catch (err) {
-        logError('ipc git.listCommits', err, { repoFullName, branch });
+        logError('ipc git.listCommits', err, { name, branch });
         throw toClientError(err);
       }
     }
   );
 
-  ipcMain.handle(IPC.git.inspect, async (_e, repoFullName: string, shas: string[]) => {
+  ipcMain.handle(IPC.git.inspect, async (_e, name: string, shas: string[]) => {
     try {
-      return await gitService.inspectCommits(repoFullName, shas);
+      return await inspectCommits(reposRoot(), name, shas);
     } catch (err) {
-      logError('ipc git.inspect', err, { repoFullName });
+      logError('ipc git.inspect', err, { name });
       throw toClientError(err);
     }
   });
 
-  ipcMain.handle(IPC.git.execute, async (_e, params: ExecuteParams) => {
+  ipcMain.handle(IPC.git.execute, async (event, params: ExecuteParams) => {
     const startedAt = Date.now();
     try {
-      const res = await gitService.executeCherryPick(params);
+      const onProgress = emitterFor(event.sender);
+      const res = await executeCherryPick(
+        reposRoot(),
+        params.repoName,
+        params.targetBranch,
+        params.shas,
+        { useX: params.useX, sourceBranch: params.sourceBranch, onProgress }
+      );
       const duration = Date.now() - startedAt;
       if (res.success) {
         notifySuccess(
           'Cherry-pick completado',
-          `${params.repoFullName}: ${res.results.length} commits aplicados.`
+          `${params.repoName}: ${res.results.length} commits aplicados.`
         );
       } else if (res.conflict && res.conflictAt) {
-        notifyConflict(params.repoFullName, res.conflictAt);
+        notifyConflict(params.repoName, res.conflictAt);
       } else if (res.error) {
-        notifyError('Cherry-pick con error', `${params.repoFullName}: ${res.error}`);
+        notifyError('Cherry-pick con error', `${params.repoName}: ${res.error}`);
       }
       return { ...res, durationMs: duration };
     } catch (err) {
@@ -60,41 +88,33 @@ export function registerGitHandlers(): void {
 
   ipcMain.handle(
     IPC.git.continue,
-    async (_e, repoFullName: string, pendingShas: string[], opts: { useX: boolean }) => {
+    async (event, name: string, pendingShas: string[], opts: { useX: boolean }) => {
       try {
-        const res = await gitService.continueCherryPick(repoFullName, pendingShas, opts);
+        const onProgress = emitterFor(event.sender);
+        const res = await continueCherryPick(reposRoot(), name, pendingShas, {
+          useX: opts?.useX !== false,
+          onProgress
+        });
         if (res.success) {
-          notifySuccess(
-            'Cherry-pick continuado',
-            `${repoFullName}: operacion completada.`
-          );
+          notifySuccess('Cherry-pick continuado', `${name}: operacion completada.`);
         } else if (res.conflict && res.conflictAt) {
-          notifyConflict(repoFullName, res.conflictAt);
+          notifyConflict(name, res.conflictAt);
         } else if (res.error) {
-          notifyError('Cherry-pick con error', `${repoFullName}: ${res.error}`);
+          notifyError('Cherry-pick con error', `${name}: ${res.error}`);
         }
         return res;
       } catch (err) {
-        logError('ipc git.continue', err, { repoFullName });
+        logError('ipc git.continue', err, { name });
         throw toClientError(err);
       }
     }
   );
 
-  ipcMain.handle(IPC.git.abort, async (_e, repoFullName: string) => {
+  ipcMain.handle(IPC.git.abort, async (_e, name: string) => {
     try {
-      return await gitService.abortCherryPick(repoFullName);
+      return await abortCherryPick(reposRoot(), name);
     } catch (err) {
-      logError('ipc git.abort', err, { repoFullName });
-      throw toClientError(err);
-    }
-  });
-
-  ipcMain.handle(IPC.git.status, async (_e, repoFullName: string) => {
-    try {
-      return await gitService.getStatus(repoFullName);
-    } catch (err) {
-      logError('ipc git.status', err, { repoFullName });
+      logError('ipc git.abort', err, { name });
       throw toClientError(err);
     }
   });

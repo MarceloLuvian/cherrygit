@@ -6,7 +6,7 @@ import { Button } from '@renderer/components/ui/Button';
 /**
  * Placeholder del detalle de repositorio.
  *
- * TODO (Sprint 2-3):
+ * TODO (siguiente epica):
  *   - BranchSelector (source + target)
  *   - DateRangeFilter
  *   - CommitList con checkboxes
@@ -14,16 +14,11 @@ import { Button } from '@renderer/components/ui/Button';
  *   - ExecuteButton + ConfirmModal
  *   - ExecuteProgress + ConflictPanel
  *   - ResultSummary
- *
- * Requerimientos: docs/architecture.md seccion 4.3 y 7.3.
  */
 export function RepoPage(): JSX.Element {
-  const params = useParams<{ owner: string; name: string }>();
+  const params = useParams<{ name: string }>();
   const navigate = useNavigate();
-
-  const owner = params.owner ?? '';
   const name = params.name ?? '';
-  const fullName = `${owner}/${name}`;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
@@ -37,8 +32,8 @@ export function RepoPage(): JSX.Element {
           <ArrowLeft size={14} aria-hidden="true" />
           Volver
         </Button>
-        <h1 className="text-xl font-semibold tracking-tight" title={fullName}>
-          {fullName}
+        <h1 className="text-xl font-semibold tracking-tight" title={name}>
+          {name}
         </h1>
       </div>
 
@@ -49,7 +44,7 @@ export function RepoPage(): JSX.Element {
             <CardTitle>Pantalla en construccion</CardTitle>
             <CardDescription className="mt-1">
               El flujo de cherry-pick (seleccion de ramas, filtrado por fecha, ejecucion y
-              resolucion de conflictos) se implementara en los siguientes sprints.
+              resolucion de conflictos) se implementara en la siguiente epica.
             </CardDescription>
           </div>
         </div>

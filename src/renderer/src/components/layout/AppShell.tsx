@@ -1,19 +1,11 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 
 /**
- * Layout principal. En la ruta `/login` no se renderiza el shell,
- * solo el contenido de la pagina.
+ * Layout principal: top bar + sidebar + contenido.
  */
 export function AppShell(): JSX.Element {
-  const location = useLocation();
-  const isLogin = location.pathname === '/login' || location.pathname === '/';
-
-  if (isLogin) {
-    return <Outlet />;
-  }
-
   return (
     <div className="flex h-full flex-col bg-[var(--color-bg)] text-[var(--color-fg)]">
       <TopBar />

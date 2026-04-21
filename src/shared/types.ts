@@ -1,34 +1,10 @@
 export type ThemeMode = 'system' | 'light' | 'dark';
 
-export interface Session {
-  user: {
-    login: string;
-    name?: string;
-    email?: string;
-    avatarUrl: string;
-  };
-  scopes: string[];
-  createdAt: string;
-}
-
 export interface Repo {
-  id: number;
-  owner: string;
   name: string;
-  fullName: string;
-  description: string | null;
-  defaultBranch: string;
-  visibility: 'public' | 'private';
-  updatedAt: string;
-  localPath?: string | null;
-  cloneUrl: string;
-  htmlUrl: string;
-}
-
-export interface LocalRepo {
-  fullName: string;
-  localPath: string;
-  lastOpenedAt: string;
+  path: string;
+  currentBranch?: string | null;
+  lastOpenedAt?: string;
 }
 
 export interface Branches {
@@ -74,7 +50,7 @@ export interface CommitApplyResult {
 }
 
 export interface ExecuteParams {
-  repoFullName: string;
+  repoName: string;
   sourceBranch: string;
   targetBranch: string;
   shas: string[];
@@ -136,35 +112,37 @@ export interface Preferences {
   cherryPickDryRunFirst: boolean;
   confirmBeforeExecute: boolean;
   notificationsEnabled: boolean;
-  clonesRoot: string;
+  reposRoot: string;
+  autoFetch: boolean;
+  defaultSinceDays: number;
 }
 
 export interface Progress {
-  phase: 'clone' | 'fetch' | 'cherry-pick' | 'inspect';
+  phase: 'fetch' | 'cherry-pick' | 'inspect' | 'checkout' | 'pull' | 'status';
+  step?: string;
+  ok?: boolean;
   percent?: number;
   message?: string;
+  repo?: string;
+  sha?: string;
+  newSha?: string;
+  error?: string;
 }
 
 export interface CherryGitAPI {
-  auth: {
-    getSession(): Promise<Session | null>;
-    login(token: string): Promise<Session>;
-    logout(): Promise<void>;
-  };
   repos: {
-    list(force?: boolean): Promise<Repo[]>;
-    clone(owner: string, name: string): Promise<LocalRepo>;
-    getLocalClones(): Promise<LocalRepo[]>;
-    openInFinder(fullName: string): Promise<void>;
+    list(): Promise<Repo[]>;
+    refresh(): Promise<Repo[]>;
+    openInFinder(name: string): Promise<void>;
+    getStatus(name: string): Promise<RepoStatus>;
   };
   git: {
-    listBranches(repoFullName: string): Promise<Branches>;
-    listCommits(repoFullName: string, branch: string, since: string, until?: string): Promise<Commit[]>;
-    inspect(repoFullName: string, shas: string[]): Promise<CommitDetail[]>;
+    listBranches(name: string): Promise<Branches>;
+    listCommits(name: string, branch: string, since: string, until?: string): Promise<Commit[]>;
+    inspect(name: string, shas: string[]): Promise<CommitDetail[]>;
     execute(params: ExecuteParams): Promise<ExecuteResult>;
-    continueOp(repoFullName: string, pendingShas: string[], opts: { useX: boolean }): Promise<ExecuteResult>;
-    abort(repoFullName: string): Promise<AbortResult>;
-    getStatus(repoFullName: string): Promise<RepoStatus>;
+    continueOp(name: string, pendingShas: string[], opts: { useX: boolean }): Promise<ExecuteResult>;
+    abort(name: string): Promise<AbortResult>;
   };
   history: {
     list(filters?: HistoryFilters): Promise<HistoryEntry[]>;
@@ -179,6 +157,7 @@ export interface CherryGitAPI {
     openInTerminal(path: string): Promise<void>;
     openInFinder(path: string): Promise<void>;
     newWindow(): Promise<void>;
+    pickDirectory(): Promise<string | null>;
   };
   theme: {
     get(): Promise<{ mode: ThemeMode; shouldUseDark: boolean }>;

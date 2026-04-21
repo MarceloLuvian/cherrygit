@@ -1,14 +1,9 @@
 export const IPC = {
-  auth: {
-    getSession: 'auth:getSession',
-    login: 'auth:login',
-    logout: 'auth:logout'
-  },
   repos: {
     list: 'repos:list',
-    clone: 'repos:clone',
-    localClones: 'repos:localClones',
-    openInFinder: 'repos:openInFinder'
+    refresh: 'repos:refresh',
+    openInFinder: 'repos:openInFinder',
+    getStatus: 'repos:getStatus'
   },
   git: {
     listBranches: 'git:listBranches',
@@ -16,8 +11,7 @@ export const IPC = {
     inspect: 'git:inspect',
     execute: 'git:execute',
     continue: 'git:continue',
-    abort: 'git:abort',
-    status: 'git:status'
+    abort: 'git:abort'
   },
   history: {
     list: 'history:list',
@@ -31,7 +25,8 @@ export const IPC = {
     openInEditor: 'sys:openInEditor',
     openInTerminal: 'sys:openInTerminal',
     openInFinder: 'sys:openInFinder',
-    newWindow: 'sys:newWindow'
+    newWindow: 'sys:newWindow',
+    pickDirectory: 'sys:pickDirectory'
   },
   theme: {
     get: 'theme:get',
