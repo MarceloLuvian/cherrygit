@@ -12,7 +12,7 @@ import {
   Search
 } from 'lucide-react';
 import { api } from '@renderer/lib/api';
-import type { Branches, Commit, ExecuteResult, Progress, StepResult } from '@shared/types';
+import type { Branches, Commit, ExecuteResult, Progress, Repo, StepResult } from '@shared/types';
 import { Card, CardTitle, CardDescription } from '@renderer/components/ui/Card';
 import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
@@ -21,6 +21,7 @@ import { usePreferencesStore } from '@renderer/stores/preferences.store';
 import { toastError } from '@renderer/components/feedback/Toast';
 import { CommitDetailDrawer } from './CommitDetailDrawer';
 import { ConfirmExecuteModal } from './ConfirmExecuteModal';
+import { ConflictPanel } from './ConflictPanel';
 
 type ExecStatus = 'idle' | 'confirming' | 'checking' | 'executing' | 'done';
 
@@ -193,6 +194,16 @@ export function RepoPage(): JSX.Element {
     enabled: Boolean(name),
     retry: false
   });
+
+  const reposQuery = useQuery<Repo[]>({
+    queryKey: ['repos'],
+    queryFn: () => api.repos.list(),
+    staleTime: 60_000
+  });
+  const repoPath = useMemo(
+    () => reposQuery.data?.find((r) => r.name === name)?.path ?? null,
+    [reposQuery.data, name]
+  );
 
   useEffect(() => {
     if (branchesQuery.error) toastError(branchesQuery.error);
@@ -520,6 +531,16 @@ export function RepoPage(): JSX.Element {
             </div>
           </div>
         </Card>
+      ) : null}
+
+      {execStatus === 'done' && execResult?.conflict ? (
+        <ConflictPanel
+          repoName={name}
+          repoPath={repoPath}
+          result={execResult}
+          useX={useX}
+          onResolved={(next) => setExecResult(next)}
+        />
       ) : null}
 
       {execStatus === 'done' && execResult && !execResult.success && !execResult.conflict
