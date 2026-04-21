@@ -16,7 +16,13 @@ mac:
   icon: resources/icon.icns
   hardenedRuntime: false
   gatekeeperAssess: false
+  identity: null
+  minimumSystemVersion: "13.0"
   artifactName: ${productName}-${version}-${arch}.${ext}
+  extendInfo:
+    LSMinimumSystemVersion: "13.0"
+    NSHumanReadableCopyright: "Copyright (c) 2026 Consiss"
+    CFBundleShortVersionString: "${version}"
 dmg:
   title: ${productName} ${version}
   window:

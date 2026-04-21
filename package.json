@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "package": "electron-vite build && electron-builder --mac --universal",
+    "package:arm64": "electron-vite build && electron-builder --mac --arm64",
     "package:dir": "electron-vite build && electron-builder --mac --dir",
     "icons": "node scripts/generate-icons.mjs",
     "postinstall": "electron-builder install-app-deps"
