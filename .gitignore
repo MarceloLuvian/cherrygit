@@ -1,0 +1,17 @@
+node_modules/
+out/
+dist/
+.vscode/
+.idea/
+.DS_Store
+*.log
+logs/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.local
+resources/icon.icns
+resources/icon.ico
+resources/icon.png
+resources/icons/
