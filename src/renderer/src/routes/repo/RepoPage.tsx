@@ -191,6 +191,42 @@ export function RepoPage(): JSX.Element {
     };
   }, []);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isTyping =
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable;
+      const mod = e.metaKey || e.ctrlKey;
+
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'a' && !isTyping && commits.length > 0) {
+        e.preventDefault();
+        setSelected(new Set(commits.map((c) => c.fullSha)));
+        return;
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'a' && !isTyping) {
+        e.preventDefault();
+        setSelected(new Set());
+        return;
+      }
+      if (
+        e.key === 'Enter' &&
+        mod &&
+        execStatus === 'idle' &&
+        selected.size > 0 &&
+        targetBranch
+      ) {
+        e.preventDefault();
+        setExecResult(null);
+        setDirtyFiles([]);
+        setProgressEvents([]);
+        setExecStatus('confirming');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [commits, selected.size, targetBranch, execStatus]);
+
   const branchesQuery = useQuery<Branches>({
     queryKey: ['branches', name, autoFetch],
     queryFn: () => api.git.listBranches(name),

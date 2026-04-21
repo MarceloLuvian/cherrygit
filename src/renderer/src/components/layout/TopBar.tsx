@@ -15,7 +15,7 @@ export function TopBar(): JSX.Element {
 
   return (
     <header
-      className="drag-region flex h-12 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4"
+      className="drag-region flex h-12 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] pl-20 pr-4"
       role="banner"
     >
       <div className="no-drag flex items-center gap-2">
