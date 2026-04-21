@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, FileText } from 'lucide-react';
 import type { Preferences } from '@shared/types';
 import { ThemeToggle } from '@renderer/components/layout/ThemeToggle';
 import { Button } from '@renderer/components/ui/Button';
@@ -73,6 +73,14 @@ export function PreferencesPage(): JSX.Element {
     try {
       const picked = await api.system.pickDirectory();
       if (picked) update('reposRoot', picked);
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
+  const handleOpenLogs = async (): Promise<void> => {
+    try {
+      await api.system.openLogsDir();
     } catch (err) {
       toastError(err);
     }
@@ -247,6 +255,20 @@ export function PreferencesPage(): JSX.Element {
               className="w-28"
             />
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Logs</CardTitle>
+        <CardDescription className="mt-1">
+          Los logs de la aplicacion se escriben en{' '}
+          <code className="font-mono text-xs">~/Library/Logs/cherrygit/app.log</code>.
+        </CardDescription>
+        <div className="mt-3">
+          <Button variant="secondary" size="sm" onClick={handleOpenLogs}>
+            <FileText size={14} aria-hidden="true" />
+            Abrir carpeta de logs
+          </Button>
         </div>
       </Card>
 

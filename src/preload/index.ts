@@ -56,7 +56,8 @@ const api: CherryGitAPI = {
       ipcRenderer.invoke(IPC.system.openInTerminal, p) as Promise<void>,
     openInFinder: (p: string) => ipcRenderer.invoke(IPC.system.openInFinder, p) as Promise<void>,
     newWindow: () => ipcRenderer.invoke(IPC.system.newWindow) as Promise<void>,
-    pickDirectory: () => ipcRenderer.invoke(IPC.system.pickDirectory) as Promise<string | null>
+    pickDirectory: () => ipcRenderer.invoke(IPC.system.pickDirectory) as Promise<string | null>,
+    openLogsDir: () => ipcRenderer.invoke(IPC.system.openLogsDir) as Promise<string>
   },
   theme: {
     get: () =>

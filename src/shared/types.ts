@@ -158,6 +158,7 @@ export interface CherryGitAPI {
     openInFinder(path: string): Promise<void>;
     newWindow(): Promise<void>;
     pickDirectory(): Promise<string | null>;
+    openLogsDir(): Promise<string>;
   };
   theme: {
     get(): Promise<{ mode: ThemeMode; shouldUseDark: boolean }>;

@@ -26,7 +26,8 @@ export const IPC = {
     openInTerminal: 'sys:openInTerminal',
     openInFinder: 'sys:openInFinder',
     newWindow: 'sys:newWindow',
-    pickDirectory: 'sys:pickDirectory'
+    pickDirectory: 'sys:pickDirectory',
+    openLogsDir: 'sys:openLogsDir'
   },
   theme: {
     get: 'theme:get',

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { IPC } from '@shared/ipc-channels.js';
 import { getPreferences } from '../services/preferences.service.js';
 import { newWindow } from '../windows/manager.js';
+import { getLogsDir } from '../utils/paths.js';
 import { logError } from '../utils/logger.js';
 
 export function registerSystemHandlers(): void {
@@ -44,6 +45,17 @@ export function registerSystemHandlers(): void {
       newWindow();
     } catch (err) {
       logError('ipc sys.newWindow', err);
+      throw toClientError(err);
+    }
+  });
+
+  ipcMain.handle(IPC.system.openLogsDir, async () => {
+    try {
+      const dir = getLogsDir();
+      await shell.openPath(dir);
+      return dir;
+    } catch (err) {
+      logError('ipc sys.openLogsDir', err);
       throw toClientError(err);
     }
   });

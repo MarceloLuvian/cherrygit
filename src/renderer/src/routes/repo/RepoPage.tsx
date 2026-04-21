@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Check,
   CircleAlert,
+  Copy,
   GitBranch,
   Play,
   RefreshCw,
@@ -18,7 +19,7 @@ import { Button } from '@renderer/components/ui/Button';
 import { Input } from '@renderer/components/ui/Input';
 import { Spinner } from '@renderer/components/ui/Spinner';
 import { usePreferencesStore } from '@renderer/stores/preferences.store';
-import { toastError } from '@renderer/components/feedback/Toast';
+import { toast, toastError } from '@renderer/components/feedback/Toast';
 import { CommitDetailDrawer } from './CommitDetailDrawer';
 import { ConfirmExecuteModal } from './ConfirmExecuteModal';
 import { ConflictPanel } from './ConflictPanel';
@@ -547,6 +548,9 @@ export function RepoPage(): JSX.Element {
             events={progressEvents}
             steps={execResult?.steps ?? []}
             running={execStatus === 'executing'}
+            sourceBranch={sourceBranch}
+            targetBranch={targetBranch}
+            useX={useX}
           />
         </Card>
       ) : null}
@@ -632,23 +636,40 @@ interface ProgressListProps {
   events: Progress[];
   steps: StepResult[];
   running: boolean;
+  sourceBranch: string;
+  targetBranch: string;
+  useX: boolean;
 }
 
-function ProgressList({ events, steps, running }: ProgressListProps): JSX.Element {
+function ProgressList({
+  events,
+  steps,
+  running,
+  sourceBranch,
+  targetBranch,
+  useX
+}: ProgressListProps): JSX.Element {
   const lines = events.length > 0
     ? events.map((e, i) => ({
         key: `${i}-${e.step ?? e.phase}`,
         label: formatProgressLabel(e),
         ok: e.ok !== false,
         error: e.error,
-        running: running && i === events.length - 1 && e.ok !== false
+        running: running && i === events.length - 1 && e.ok !== false,
+        command: buildEquivalentCommand(e.step ?? e.phase, {
+          sourceBranch,
+          targetBranch,
+          useX,
+          sha: e.sha
+        })
       }))
     : steps.map((s, i) => ({
         key: `${i}-${s.step}`,
         label: s.step,
         ok: s.ok,
         error: s.stderr,
-        running: false
+        running: false,
+        command: buildEquivalentCommand(s.step, { sourceBranch, targetBranch, useX })
       }));
 
   if (lines.length === 0) {
@@ -676,6 +697,17 @@ function ProgressList({ events, steps, running }: ProgressListProps): JSX.Elemen
             )}
           </span>
           <span className="flex-1 break-words font-mono text-[var(--color-fg)]">{l.label}</span>
+          {l.command ? (
+            <button
+              type="button"
+              onClick={() => void copyCommand(l.command!)}
+              title={`Copiar: ${l.command}`}
+              aria-label="Copiar comando equivalente"
+              className="shrink-0 text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+            >
+              <Copy size={12} aria-hidden="true" />
+            </button>
+          ) : null}
           {l.error ? (
             <span className="shrink-0 text-[var(--color-danger)]" title={l.error}>
               error
@@ -685,6 +717,54 @@ function ProgressList({ events, steps, running }: ProgressListProps): JSX.Elemen
       ))}
     </ul>
   );
+}
+
+async function copyCommand(cmd: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(cmd);
+    toast('Comando copiado');
+  } catch (err) {
+    toastError(err);
+  }
+}
+
+interface CommandCtx {
+  sourceBranch: string;
+  targetBranch: string;
+  useX: boolean;
+  sha?: string;
+}
+
+function buildEquivalentCommand(step: string, ctx: CommandCtx): string | null {
+  const { sourceBranch, targetBranch, useX, sha } = ctx;
+  switch (step) {
+    case 'working-tree-clean':
+    case 'status':
+      return 'git status --porcelain';
+    case 'fetch':
+      return 'git fetch --all --prune';
+    case 'checkout':
+      return targetBranch ? `git checkout ${targetBranch}` : 'git checkout <destino>';
+    case 'pull':
+      return 'git pull --ff-only';
+    case 'cherry-pick':
+      return sha
+        ? `git cherry-pick ${useX ? '-x ' : ''}${sha}`
+        : `git cherry-pick ${useX ? '-x ' : ''}<sha>`;
+    case 'cherry-pick-continue':
+      return 'git cherry-pick --continue';
+    case 'cherry-pick-pending':
+      return `git cherry-pick ${useX ? '-x ' : ''}<pending-shas>`;
+    case 'cherry-pick-abort':
+      return 'git cherry-pick --abort';
+    case 'inspect':
+      return sha ? `git show --stat ${sha}` : null;
+    default:
+      if (sourceBranch && step.includes('commits')) {
+        return `git log ${sourceBranch} --since=<fecha>`;
+      }
+      return null;
+  }
 }
 
 function formatProgressLabel(e: Progress): string {
