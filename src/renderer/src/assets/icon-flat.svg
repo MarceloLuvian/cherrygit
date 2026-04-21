@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CherryGit flat logo - version sin fondo, para pantalla de login -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="cherryR" cx="0.3" cy="0.3" r="0.8">
+      <stop offset="0%" stop-color="#ff8fa3"/>
+      <stop offset="55%" stop-color="#e63946"/>
+      <stop offset="100%" stop-color="#9d0208"/>
+    </radialGradient>
+    <filter id="shadowFlat" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Linea de commits horizontal, en rojo cereza para que sea visible en light y dark -->
+  <line x1="100" y1="600" x2="924" y2="600" stroke="#e63946" stroke-width="14" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Nodos de commit: rojo cereza sólido -->
+  <g>
+    <circle cx="100" cy="600" r="34" fill="#e63946" opacity="0.85"/>
+    <circle cx="236" cy="600" r="34" fill="#e63946" opacity="0.85"/>
+    <circle cx="788" cy="600" r="34" fill="#e63946" opacity="0.85"/>
+    <circle cx="924" cy="600" r="34" fill="#e63946" opacity="0.85"/>
+  </g>
+
+  <!-- Cereza roja central -->
+  <g filter="url(#shadowFlat)">
+    <path d="M 512 400 Q 550 310 620 270" stroke="#2d6a4f" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path d="M 610 260 Q 680 210 740 260 Q 710 310 640 295 Z" fill="#52b788"/>
+    <path d="M 640 290 L 710 255" stroke="#1b4332" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="512" cy="580" r="200" fill="url(#cherryR)"/>
+    <ellipse cx="450" cy="510" rx="55" ry="38" fill="#ffffff" opacity="0.45"/>
+    <circle cx="530" cy="500" r="12" fill="#ffffff" opacity="0.55"/>
+  </g>
+</svg>

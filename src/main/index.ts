@@ -1,4 +1,6 @@
 import { app, BrowserWindow, nativeTheme } from 'electron';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { IPC } from '@shared/ipc-channels.js';
 import { createMainWindow } from './windows/manager.js';
 import { installMenu } from './windows/menu.js';
@@ -6,6 +8,17 @@ import { registerIpc } from './ipc/register.js';
 import { initTheme } from './services/theme.service.js';
 import { logError, logInfo } from './utils/logger.js';
 import { getPreferences } from './services/preferences.service.js';
+
+// Forzar nombre en menues y notificaciones (dev mode sobreescribe "Electron").
+app.setName('CherryGit');
+if (process.platform === 'darwin' && app.dock) {
+  try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    app.dock.setIcon(path.resolve(__dirname, '..', '..', 'resources', 'icon.png'));
+  } catch {
+    /* icono todavia no generado en primera corrida; se reintenta por ventana */
+  }
+}
 
 // Single-instance lock so multi-launch raises existing windows.
 const gotLock = app.requestSingleInstanceLock();

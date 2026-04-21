@@ -6,7 +6,10 @@ import { Input } from '@renderer/components/ui/Input';
 import { Card } from '@renderer/components/ui/Card';
 import { ThemeToggle } from '@renderer/components/layout/ThemeToggle';
 import { useSessionStore } from '@renderer/stores/session.store';
+import { useThemeStore } from '@renderer/stores/theme.store';
 import { openExternal } from '@renderer/lib/utils';
+import iconLight from '@renderer/assets/icon-flat.svg';
+import iconDark from '@renderer/assets/icon-flat-dark.svg';
 
 const TOKEN_URL =
   'https://github.com/settings/tokens/new?scopes=repo&description=CherryGit';
@@ -14,6 +17,8 @@ const TOKEN_URL =
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const login = useSessionStore((s) => s.login);
+  const shouldUseDark = useThemeStore((s) => s.shouldUseDark);
+  const iconUrl = shouldUseDark ? iconDark : iconLight;
   const [token, setToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,46 +58,8 @@ export function LoginPage(): JSX.Element {
       </div>
 
       <Card className="w-full max-w-md">
-        <div className="mb-5 flex flex-col items-center gap-2">
-          {/* Logo: cereza */}
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path
-              d="M28 6c0 6 2 8 8 8"
-              stroke="#16a34a"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M16 22c0-6 4-10 12-11"
-              stroke="#16a34a"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <path
-              d="M32 25c-2-4-1-10 4-14"
-              stroke="#16a34a"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <circle cx="16" cy="33" r="9" fill="#e63946" />
-            <circle cx="32" cy="34" r="8" fill="#e63946" />
-            <circle cx="14" cy="30" r="2" fill="#ff7b86" opacity="0.7" />
-            <circle cx="30" cy="31" r="1.8" fill="#ff7b86" opacity="0.7" />
-          </svg>
-
-          <h1 className="text-xl font-semibold tracking-tight">CherryGit</h1>
-          <p className="text-center text-sm text-[var(--color-fg-muted)]">
-            Cherry-pick masivo entre ramas de GitHub desde una interfaz nativa macOS.
-          </p>
+        <div className="mb-5 flex flex-col items-center">
+          <img src={iconUrl} width={112} height={112} alt="CherryGit" />
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

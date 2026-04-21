@@ -40,11 +40,15 @@ export function RepoListPage(): JSX.Element {
   const filtered = useMemo(() => {
     const list = reposQuery.data ?? [];
     const q = query.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (r) =>
-        r.fullName.toLowerCase().includes(q) ||
-        (r.description ?? '').toLowerCase().includes(q)
+    const base = q
+      ? list.filter(
+          (r) =>
+            r.fullName.toLowerCase().includes(q) ||
+            (r.description ?? '').toLowerCase().includes(q)
+        )
+      : list;
+    return [...base].sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' })
     );
   }, [reposQuery.data, query]);
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Opción B: "Cherry Commit" — cereza grande sobre una linea de commits que la atraviesa -->
+<!-- CherryGit icon - Apple macOS safe zone: arte a 824x824 centrado en 1024x1024 (~100px padding) -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
     <linearGradient id="bgB" x1="0" y1="0" x2="0" y2="1">
@@ -17,39 +17,33 @@
     </filter>
   </defs>
 
-  <!-- Fondo rounded macOS -->
-  <rect width="1024" height="1024" rx="230" ry="230" fill="url(#bgB)"/>
+  <!-- Safe zone: todo el arte escalado 0.805 y centrado => 824x824 dentro del canvas 1024 -->
+  <g transform="translate(100, 100) scale(0.805)">
+    <rect width="1024" height="1024" rx="230" ry="230" fill="url(#bgB)"/>
 
-  <!-- Linea de commits horizontal que atraviesa la cereza -->
-  <line x1="100" y1="600" x2="924" y2="600" stroke="#ffffff" stroke-width="12" stroke-linecap="round" opacity="0.85"/>
+    <line x1="100" y1="600" x2="924" y2="600" stroke="#ffffff" stroke-width="12" stroke-linecap="round" opacity="0.85"/>
 
-  <!-- Nodos de commit (la cereza cubre el central). Mas separacion entre cereza e interiores. -->
-  <g>
-    <circle cx="100" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
-    <circle cx="100" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
+    <g>
+      <circle cx="100" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+      <circle cx="100" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
 
-    <circle cx="236" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
-    <circle cx="236" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
+      <circle cx="236" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+      <circle cx="236" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
 
-    <circle cx="788" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
-    <circle cx="788" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
+      <circle cx="788" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+      <circle cx="788" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
 
-    <circle cx="924" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
-    <circle cx="924" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
-  </g>
+      <circle cx="924" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+      <circle cx="924" cy="600" r="36" fill="none" stroke="#b00020" stroke-width="6" opacity="0.6"/>
+    </g>
 
-  <!-- Cereza central grande estilo iOS -->
-  <g filter="url(#shadowB)">
-    <!-- Tallo curvo -->
-    <path d="M 512 400 Q 550 310 620 270" stroke="#2d6a4f" stroke-width="18" fill="none" stroke-linecap="round"/>
-    <!-- Hoja -->
-    <path d="M 610 260 Q 680 210 740 260 Q 710 310 640 295 Z" fill="#52b788"/>
-    <path d="M 640 290 L 710 255" stroke="#1b4332" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <!-- Cereza (esfera) - cubre el commit central creando el efecto "cherry-picked" -->
-    <circle cx="512" cy="580" r="200" fill="url(#cherryB)"/>
-    <!-- Brillo principal -->
-    <ellipse cx="450" cy="510" rx="55" ry="38" fill="#ffffff" opacity="0.65"/>
-    <!-- Brillo secundario -->
-    <circle cx="530" cy="500" r="12" fill="#ffffff" opacity="0.55"/>
+    <g filter="url(#shadowB)">
+      <path d="M 512 400 Q 550 310 620 270" stroke="#2d6a4f" stroke-width="18" fill="none" stroke-linecap="round"/>
+      <path d="M 610 260 Q 680 210 740 260 Q 710 310 640 295 Z" fill="#52b788"/>
+      <path d="M 640 290 L 710 255" stroke="#1b4332" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <circle cx="512" cy="580" r="200" fill="url(#cherryB)"/>
+      <ellipse cx="450" cy="510" rx="55" ry="38" fill="#ffffff" opacity="0.65"/>
+      <circle cx="530" cy="500" r="12" fill="#ffffff" opacity="0.55"/>
+    </g>
   </g>
 </svg>

@@ -1,21 +1,38 @@
-import { BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function resolvePreloadPath(): string {
-  // In electron-vite, preload is built to out/preload/index.js (or .mjs/.cjs).
-  // main bundle is emitted under out/main; relative go up one dir.
-  return path.resolve(__dirname, '..', 'preload', 'index.js');
+  return path.resolve(__dirname, '..', 'preload', 'index.mjs');
 }
 
 function resolveRendererIndexPath(): string {
   return path.resolve(__dirname, '..', 'renderer', 'index.html');
 }
 
+function resolveIconPath(): string {
+  return path.resolve(__dirname, '..', '..', 'resources', 'icon.png');
+}
+
+let dockIconApplied = false;
+function applyDockIconOnce(): void {
+  if (dockIconApplied) return;
+  if (process.platform === 'darwin' && app.dock) {
+    try {
+      app.dock.setIcon(resolveIconPath());
+      dockIconApplied = true;
+    } catch {
+      // Icon may not exist yet in dev before `npm run icons`; ignore.
+    }
+  }
+}
+
 export function createMainWindow(): BrowserWindow {
+  applyDockIconOnce();
   const preload = resolvePreloadPath();
+  const icon = resolveIconPath();
 
   const win = new BrowserWindow({
     width: 1280,
@@ -25,11 +42,12 @@ export function createMainWindow(): BrowserWindow {
     show: false,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#111111',
+    icon,
     webPreferences: {
       preload,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       webSecurity: true,
       allowRunningInsecureContent: false
     }

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CherryGit flat logo (dark mode) - cereza blanca como el original, sin fondo rojo -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="cherryW" cx="0.3" cy="0.3" r="0.8">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#ffdddd"/>
+      <stop offset="60%" stop-color="#f1f3f5"/>
+      <stop offset="100%" stop-color="#dee2e6"/>
+    </radialGradient>
+    <filter id="shadowW" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Linea de commits horizontal en blanco semi-transparente -->
+  <line x1="100" y1="600" x2="924" y2="600" stroke="#ffffff" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- Nodos de commit: blanco con halo rojo como el icono original -->
+  <g>
+    <circle cx="100" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+    <circle cx="100" cy="600" r="36" fill="none" stroke="#e63946" stroke-width="6" opacity="0.7"/>
+
+    <circle cx="236" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+    <circle cx="236" cy="600" r="36" fill="none" stroke="#e63946" stroke-width="6" opacity="0.7"/>
+
+    <circle cx="788" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+    <circle cx="788" cy="600" r="36" fill="none" stroke="#e63946" stroke-width="6" opacity="0.7"/>
+
+    <circle cx="924" cy="600" r="36" fill="#ffffff" opacity="0.95"/>
+    <circle cx="924" cy="600" r="36" fill="none" stroke="#e63946" stroke-width="6" opacity="0.7"/>
+  </g>
+
+  <!-- Cereza blanca central (como option B original) -->
+  <g filter="url(#shadowW)">
+    <path d="M 512 400 Q 550 310 620 270" stroke="#2d6a4f" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path d="M 610 260 Q 680 210 740 260 Q 710 310 640 295 Z" fill="#52b788"/>
+    <path d="M 640 290 L 710 255" stroke="#1b4332" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="512" cy="580" r="200" fill="url(#cherryW)"/>
+    <ellipse cx="450" cy="510" rx="55" ry="38" fill="#ffffff" opacity="0.65"/>
+    <circle cx="530" cy="500" r="12" fill="#ffffff" opacity="0.55"/>
+  </g>
+</svg>
